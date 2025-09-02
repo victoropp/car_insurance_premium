@@ -28,6 +28,8 @@ build/
 
 # Data files (too large for git)
 *.csv
+!data/insurance_training_dataset.csv
+!data/final_test_results.csv
 !requirements.txt
 
 # Model files (allow essential .pkl files for deployment)
