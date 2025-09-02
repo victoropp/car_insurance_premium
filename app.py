@@ -24,9 +24,15 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
-from streamlit_visualizations import StreamlitVisualizationEngine
+# Add src to path with error handling
+try:
+    sys.path.append(os.path.join(os.path.dirname(__file__), 'streamlit_dashboard', 'src'))
+    from streamlit_visualizations import StreamlitVisualizationEngine
+except ImportError:
+    # Create a dummy class if the module is not found
+    class StreamlitVisualizationEngine:
+        def __init__(self):
+            pass
 
 warnings.filterwarnings('ignore')
 
