@@ -1663,12 +1663,21 @@ def main():
                 with col1:
                     # Driver Age Distribution with insights
                     age_fig = go.Figure()
-                    age_fig.add_trace(go.Histogram(
-                        x=actual_data['Driver Age'], 
-                        nbinsx=15,
+                    
+                    # Create custom bins for age groups
+                    age_bins = [18, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80]
+                    age_hist, age_edges = np.histogram(actual_data['Driver Age'], bins=age_bins)
+                    age_labels = [f"{age_bins[i]}-{age_bins[i+1]}" for i in range(len(age_bins)-1)]
+                    
+                    age_fig.add_trace(go.Bar(
+                        x=age_labels,
+                        y=age_hist,
                         marker_color='#2E86AB',
+                        marker_line=dict(color='white', width=2),
+                        text=age_hist,
+                        textposition='outside',
                         name='Count',
-                        hovertemplate='Age: %{x}<br>Count: %{y}<extra></extra>'
+                        hovertemplate='Age Range: %{x}<br>Count: %{y}<extra></extra>'
                     ))
                     
                     # Add mean line
@@ -1678,10 +1687,12 @@ def main():
                     
                     age_fig.update_layout(
                         title="Driver Age Distribution",
-                        xaxis_title="Age (years)",
+                        xaxis_title="Age Range (years)",
                         yaxis_title="Number of Drivers",
                         height=350,
-                        showlegend=False
+                        showlegend=False,
+                        bargap=0.2,
+                        xaxis=dict(tickangle=-45)
                     )
                     st.plotly_chart(age_fig, use_container_width=True)
                     
@@ -1696,12 +1707,21 @@ def main():
                 with col2:
                     # Experience Distribution with insights
                     exp_fig = go.Figure()
-                    exp_fig.add_trace(go.Histogram(
-                        x=actual_data['Driver Experience'], 
-                        nbinsx=15,
+                    
+                    # Create custom bins for experience groups
+                    exp_bins = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40]
+                    exp_hist, exp_edges = np.histogram(actual_data['Driver Experience'], bins=exp_bins)
+                    exp_labels = [f"{exp_bins[i]}-{exp_bins[i+1]}" for i in range(len(exp_bins)-1)]
+                    
+                    exp_fig.add_trace(go.Bar(
+                        x=exp_labels,
+                        y=exp_hist,
                         marker_color='#A23B72',
+                        marker_line=dict(color='white', width=2),
+                        text=exp_hist,
+                        textposition='outside',
                         name='Count',
-                        hovertemplate='Experience: %{x} years<br>Count: %{y}<extra></extra>'
+                        hovertemplate='Experience Range: %{x} years<br>Count: %{y}<extra></extra>'
                     ))
                     
                     # Add mean line
@@ -1711,10 +1731,12 @@ def main():
                     
                     exp_fig.update_layout(
                         title="Driving Experience Distribution",
-                        xaxis_title="Years of Experience",
+                        xaxis_title="Experience Range (years)",
                         yaxis_title="Number of Drivers",
                         height=350,
-                        showlegend=False
+                        showlegend=False,
+                        bargap=0.2,
+                        xaxis=dict(tickangle=-45)
                     )
                     st.plotly_chart(exp_fig, use_container_width=True)
                     
@@ -1734,12 +1756,21 @@ def main():
                 with col1:
                     # Vehicle Age Distribution
                     veh_fig = go.Figure()
-                    veh_fig.add_trace(go.Histogram(
-                        x=actual_data['Car Age'],
-                        nbinsx=15,
+                    
+                    # Create custom bins for vehicle age groups
+                    veh_bins = [0, 2, 4, 6, 8, 10, 12, 15, 20, 25]
+                    veh_hist, veh_edges = np.histogram(actual_data['Car Age'], bins=veh_bins)
+                    veh_labels = [f"{veh_bins[i]}-{veh_bins[i+1]}" for i in range(len(veh_bins)-1)]
+                    
+                    veh_fig.add_trace(go.Bar(
+                        x=veh_labels,
+                        y=veh_hist,
                         marker_color='#6A994E',
+                        marker_line=dict(color='white', width=2),
+                        text=veh_hist,
+                        textposition='outside',
                         name='Count',
-                        hovertemplate='Vehicle Age: %{x} years<br>Count: %{y}<extra></extra>'
+                        hovertemplate='Vehicle Age Range: %{x} years<br>Count: %{y}<extra></extra>'
                     ))
                     
                     mean_veh = actual_data['Car Age'].mean()
@@ -1748,10 +1779,12 @@ def main():
                     
                     veh_fig.update_layout(
                         title="Vehicle Age Distribution",
-                        xaxis_title="Vehicle Age (years)",
+                        xaxis_title="Vehicle Age Range (years)",
                         yaxis_title="Number of Vehicles",
                         height=350,
-                        showlegend=False
+                        showlegend=False,
+                        bargap=0.2,
+                        xaxis=dict(tickangle=-45)
                     )
                     st.plotly_chart(veh_fig, use_container_width=True)
                     
@@ -1766,12 +1799,21 @@ def main():
                 with col2:
                     # Mileage Distribution
                     mile_fig = go.Figure()
-                    mile_fig.add_trace(go.Histogram(
-                        x=actual_data['Annual Mileage (x1000 km)'],
-                        nbinsx=15,
+                    
+                    # Create custom bins for mileage groups
+                    mile_bins = [0, 5, 10, 15, 20, 25, 30, 35, 40]
+                    mile_hist, mile_edges = np.histogram(actual_data['Annual Mileage (x1000 km)'], bins=mile_bins)
+                    mile_labels = [f"{mile_bins[i]}-{mile_bins[i+1]}k" for i in range(len(mile_bins)-1)]
+                    
+                    mile_fig.add_trace(go.Bar(
+                        x=mile_labels,
+                        y=mile_hist,
                         marker_color='#F18F01',
+                        marker_line=dict(color='white', width=2),
+                        text=mile_hist,
+                        textposition='outside',
                         name='Count',
-                        hovertemplate='Mileage: %{x}k km/year<br>Count: %{y}<extra></extra>'
+                        hovertemplate='Mileage Range: %{x} km/year<br>Count: %{y}<extra></extra>'
                     ))
                     
                     mean_mile = actual_data['Annual Mileage (x1000 km)'].mean()
@@ -1780,10 +1822,12 @@ def main():
                     
                     mile_fig.update_layout(
                         title="Annual Mileage Distribution",
-                        xaxis_title="Annual Mileage (×1000 km)",
+                        xaxis_title="Annual Mileage Range (×1000 km)",
                         yaxis_title="Number of Drivers",
                         height=350,
-                        showlegend=False
+                        showlegend=False,
+                        bargap=0.2,
+                        xaxis=dict(tickangle=-45)
                     )
                     st.plotly_chart(mile_fig, use_container_width=True)
                     
@@ -1810,6 +1854,7 @@ def main():
                         y=acc_counts.values,
                         marker_color=['#6A994E' if i == 0 else '#F18F01' if i < 3 else '#C73E1D' 
                                      for i in acc_counts.index],
+                        marker_line=dict(color='white', width=2),
                         text=acc_counts.values,
                         textposition='outside',
                         hovertemplate='%{x} accidents: %{y} drivers<extra></extra>'
@@ -1820,7 +1865,8 @@ def main():
                         xaxis_title="Number of Previous Accidents",
                         yaxis_title="Number of Drivers",
                         height=350,
-                        showlegend=False
+                        showlegend=False,
+                        bargap=0.3
                     )
                     st.plotly_chart(acc_fig, use_container_width=True)
                 
