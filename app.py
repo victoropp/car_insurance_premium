@@ -377,8 +377,15 @@ def load_models_with_metadata():
                     'model': joblib.load(config['path']),
                     **config
                 }
+            else:
+                st.warning(f"⚠️ Model file not found: {config['path']}")
         except Exception as e:
-            st.error(f"Error loading {config['name']}: {str(e)}")
+            st.error(f"❌ Error loading {config['name']}: {str(e)}")
+    
+    if not models:
+        st.error("❌ No models could be loaded. Please check that model files exist in the models/ directory.")
+    else:
+        st.success(f"✅ Successfully loaded {len(models)} model(s): {', '.join(models.keys())}")
     
     return models
 
@@ -1063,18 +1070,26 @@ def main():
             
             # Model Selection
             with st.expander("🤖 Model Selection", expanded=True):
+                if not models:
+                    st.error("❌ No models loaded. Please check if model files exist in the models/ directory.")
+                    st.stop()
+                
                 selected_calc_model = st.selectbox(
                     "Choose Prediction Model",
                     options=list(models.keys()),
-                    format_func=lambda x: models[x]['name'],
+                    format_func=lambda x: models.get(x, {}).get('name', x),
                     help="Select which model to use for premium calculation",
                     key="calc_model_select"
                 )
                 
-                # Show model info
-                st.info(f"**{models[selected_calc_model]['description']}**\n\n"
-                       f"Accuracy: {models[selected_calc_model]['accuracy']:.2%} | "
-                       f"RMSE: ${models[selected_calc_model]['rmse']*1000:.0f}")
+                # Show model info with error handling
+                if selected_calc_model in models:
+                    model_info = models[selected_calc_model]
+                    st.info(f"**{model_info.get('description', 'No description available')}**\n\n"
+                           f"Accuracy: {model_info.get('accuracy', 0):.2%} | "
+                           f"RMSE: ${model_info.get('rmse', 0)*1000:.0f}")
+                else:
+                    st.error(f"❌ Selected model '{selected_calc_model}' not found.")
             
             with st.expander("👤 Driver Details", expanded=True):
                 age = st.slider("Age", 18, 80, 35, help="Your current age")
@@ -1104,17 +1119,24 @@ def main():
             if calculate or st.session_state.realtime_comparison:
                 with st.spinner("🤖 AI models analyzing..."):
                     # Get predictions using selected model
-                    predictions, features, explanations, impacts = predict_with_enhanced_confidence(
-                        age, experience, vehicle_age, accidents, annual_mileage,
-                        {selected_calc_model: models[selected_calc_model]}, assets
-                    )
+                    if selected_calc_model in models:
+                        predictions, features, explanations, impacts = predict_with_enhanced_confidence(
+                            age, experience, vehicle_age, accidents, annual_mileage,
+                            {selected_calc_model: models[selected_calc_model]}, assets
+                        )
+                    else:
+                        st.error("❌ Selected model not available for prediction.")
+                        st.stop()
                     
                     # Cache predictions
                     cache_key = f"{age}_{experience}_{vehicle_age}_{accidents}_{annual_mileage}"
                     st.session_state.prediction_cache[cache_key] = predictions
                     
                     # Display selected model prediction
-                    model_pred = predictions[selected_calc_model]
+                    model_pred = predictions.get(selected_calc_model)
+                    if not model_pred:
+                        st.error("❌ Prediction not available for selected model.")
+                        st.stop()
                     
                     st.markdown(f"""
                     <div class="glass-card" style="text-align: center;">
