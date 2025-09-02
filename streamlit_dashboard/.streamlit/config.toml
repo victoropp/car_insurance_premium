@@ -1,0 +1,33 @@
+[global]
+# Suppress deprecation warnings
+showWarningOnDirectExecution = false
+
+[server]
+# Maximum upload size (200MB)
+maxUploadSize = 200
+
+# Enable CORS for development
+enableCORS = true
+
+# Enable WebSocket compression
+enableWebsocketCompression = true
+
+[client]
+# Show error details
+showErrorDetails = true
+
+[theme]
+# Professional color scheme matching Videbimus AI branding
+primaryColor = "#2E86AB"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F7FA"
+textColor = "#2D3436"
+font = "sans serif"
+
+[runner]
+# Optimize memory usage
+magicEnabled = true
+
+[browser]
+# Automatically gather usage stats
+gatherUsageStats = true

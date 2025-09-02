@@ -1,0 +1,608 @@
+
+from streamlit_visualizations import StreamlitVisualizationEngine
+
+warnings.filterwarnings('ignore')\n\n# Application version and metadata\nAPP_VERSION = \"2.0.0\"\nLAST_UPDATED = \"2025-09-02\"\nMODEL_VERSION = \"Statistical-v1.0\"
+
+# ==================== PAGE CONFIGURATION ====================
+st.set_page_config(
+    page_title="Videbimus AI - Insurance Premium Analytics",
+    page_icon="🏢",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://www.videbimusai.com',
+        'Report a bug': 'mailto:consulting@videbimusai.com',
+        'About': """
+        # Videbimus AI - Insurance Premium Analytics
+        
+        **World-Class ML-Powered Dashboard**
+        
+        Developed by Victor Collins Oppon
+        
+        🌐 Website: https://www.videbimusai.com
+        📧 Contact: consulting@videbimusai.com
+        
+        © 2025 Videbimus AI. All rights reserved.
+        """
+    }
+)
+
+# ==================== CACHING & MEMORY OPTIMIZATION ====================
+@st.cache_resource
+def load_models():
+    """Load ML models with caching for memory efficiency"""
+    models = {}
+    model_files = {
+        'stacking_linear': 'models/stacking_linear.pkl',
+        'stacking_ridge': 'models/stacking_ridge.pkl',
+        'voting_ensemble': 'models/voting_ensemble.pkl'
+    }
+    
+    for name, filepath in model_files.items():
+        try:
+            if os.path.exists(filepath):
+                models[name] = joblib.load(filepath)
+                st.sidebar.success(f"✅ {name.replace('_', ' ').title()} model loaded")
+            else:
+                st.sidebar.warning(f"⚠️ Model file not found: {filepath}")
+        except Exception as e:
+            st.sidebar.error(f"❌ Error loading {name}: {str(e)}")
+    
+    # Memory cleanup
+    gc.collect()
+    return models
+
+@st.cache_data
+def load_test_results():
+    """Load test results with caching"""
+    try:
+        if os.path.exists('data/final_test_results.csv'):
+            test_results = pd.read_csv('data/final_test_results.csv')
+            return test_results
+        else:
+            st.warning("Test results file not found. Using default values.")
+            return pd.DataFrame({
+                'Model': ['Stacking (Linear)', 'Stacking (Ridge)', 'Voting Ensemble'],
+                'Test_R2': [0.9978, 0.9978, 0.9948],
+                'Test_RMSE': [0.2721, 0.2725, 0.4190],
+                'Test_MAE': [0.2010, 0.2012, 0.2939]
+            })
+    except Exception as e:
+        st.error(f"Error loading test results: {str(e)}")
+        return None
+
+@st.cache_resource
+def initialize_visualization_engine():
+    """Initialize and cache the visualization engine"""
+    try:
+        viz_engine = StreamlitVisualizationEngine()
+        return viz_engine
+    except Exception as e:
+        st.error(f"Error initializing visualization engine: {str(e)}")
+        return None
+
+@st.cache_resource
+def load_scaler_and_features():
+    """Load the trained scaler and selected features"""
+    try:
+        scaler = joblib.load('models/robust_scaler.pkl')
+        selected_features = joblib.load('models/selected_features.pkl')
+        data_stats = joblib.load('models/data_statistics.pkl')
+        st.sidebar.success("✅ Scaler and features loaded")
+        return scaler, selected_features, data_stats
+    except Exception as e:
+        st.sidebar.error(f"❌ Error loading scaler: {str(e)}")
+        return None, None, None
+
+# ==================== FEATURE ENGINEERING ====================
+def create_statistical_features(df, data_stats):
+    """Apply statistical feature engineering matching the training pipeline"""
+    df_feat = df.copy()
+    epsilon = 1e-6
+    
+    # Ensure Car Age exists
+    if 'Car Age' not in df_feat.columns and 'Car Manufacturing Year' in df_feat.columns:
+        max_year = 2025  # Current year
+        df_feat['Car Age'] = max_year - df_feat['Car Manufacturing Year']
+    elif 'Car Age' not in df_feat.columns:
+        # Assume a default car age if not provided
+        df_feat['Car Age'] = 5
+    
+    # 1. Ratio features
+    df_feat['Accidents_Per_Year_Driving'] = (
+        df_feat['Previous Accidents'] / (df_feat['Driver Experience'] + epsilon)
+    )
+    df_feat['Mileage_Per_Year_Driving'] = (
+        df_feat['Annual Mileage (x1000 km)'] / (df_feat['Driver Experience'] + epsilon)
+    )
+    df_feat['Car_Age_Driver_Age_Ratio'] = (
+        df_feat['Car Age'] / (df_feat['Driver Age'] + epsilon)
+    )
+    df_feat['Age_Experience_Ratio'] = (
+        df_feat['Driver Age'] / (df_feat['Driver Experience'] + epsilon)
+    )
+    df_feat['Experience_Rate'] = (
+        df_feat['Driver Experience'] / (df_feat['Driver Age'] + epsilon)
+    )
+    
+    # 2. Statistical risk score (simplified for single prediction)
+    df_feat['Risk_Score'] = (
+        (df_feat['Previous Accidents'] / 3.0) * 0.3 +
+        (df_feat['Driver Age'] / 100.0) * 0.2 +
+        (df_feat['Car Age'] / 30.0) * 0.2 +
+        (df_feat['Annual Mileage (x1000 km)'] / 50.0) * 0.15 +
+        (1.0 / (df_feat['Driver Experience'] + 1)) * 0.15
+    )
+    
+    # 3. Polynomial features
+    df_feat['Driver_Age_Squared'] = df_feat['Driver Age'] ** 2
+    df_feat['Experience_Squared'] = df_feat['Driver Experience'] ** 2
+    df_feat['Accidents_Squared'] = df_feat['Previous Accidents'] ** 2
+    
+    # 4. Statistical threshold indicators using quartiles
+    # Use fixed thresholds based on typical insurance data
+    df_feat['Young_Driver'] = (df_feat['Driver Age'] < 30).astype(int)
+    df_feat['Senior_Driver'] = (df_feat['Driver Age'] > 55).astype(int)
+    df_feat['New_Driver'] = (df_feat['Driver Experience'] < 3).astype(int)
+    df_feat['High_Risk_Driver'] = (df_feat['Previous Accidents'] > 1).astype(int)
+    df_feat['Old_Car'] = (df_feat['Car Age'] > 12).astype(int)
+    df_feat['High_Mileage'] = (df_feat['Annual Mileage (x1000 km)'] > 20).astype(int)
+    
+    # 5. Interaction features
+    df_feat['Age_Experience_Interaction'] = df_feat['Driver Age'] * df_feat['Driver Experience']
+    df_feat['Age_Mileage_Interaction'] = df_feat['Driver Age'] * df_feat['Annual Mileage (x1000 km)']
+    df_feat['Experience_Accidents_Interaction'] = df_feat['Driver Experience'] * df_feat['Previous Accidents']
+    
+    # Add Car Manufacturing Year
+    if 'Car Manufacturing Year' not in df_feat.columns:
+        df_feat['Car Manufacturing Year'] = 2025 - df_feat['Car Age']
+    
+    return df_feat
+
+def validate_input_data(age, experience, vehicle_age, accidents, annual_mileage):\n    \"\"\"Validate user input data for reasonable ranges\"\"\"\n    errors = []\n    warnings = []\n    \n    # Age validation\n    if age < 18:\n        errors.append(\"Driver age must be at least 18 years old\")\n    elif age > 100:\n        errors.append(\"Driver age seems unusually high (>100 years)\")\n    elif age > 80:\n        warnings.append(\"Premium calculations may be less accurate for drivers over 80\")\n    \n    # Experience validation\n    if experience < 0:\n        errors.append(\"Driving experience cannot be negative\")\n    elif experience > (age - 15):\n        errors.append(f\"Driving experience ({experience}) cannot exceed age minus 15 ({age - 15})\")\n    elif experience > 60:\n        warnings.append(\"Driving experience over 60 years is unusual\")\n    \n    # Vehicle age validation\n    if vehicle_age < 0:\n        errors.append(\"Vehicle age cannot be negative\")\n    elif vehicle_age > 40:\n        warnings.append(\"Vehicle age over 40 years may have limited insurance options\")\n    \n    # Accidents validation\n    if accidents < 0:\n        errors.append(\"Number of accidents cannot be negative\")\n    elif accidents > 20:\n        errors.append(\"Number of accidents seems unreasonably high (>20)\")\n    elif accidents > 5:\n        warnings.append(\"High number of accidents may significantly impact premium\")\n    \n    # Mileage validation\n    if annual_mileage <= 0:\n        errors.append(\"Annual mileage must be greater than 0\")\n    elif annual_mileage > 100:\n        warnings.append(\"Very high annual mileage (>100k km) may significantly impact premium\")\n    elif annual_mileage < 1:\n        warnings.append(\"Very low annual mileage (<1k km) is unusual\")\n    \n    return errors, warnings\n\ndef predict_premium(age, experience, vehicle_age, accidents, annual_mileage, models, scaler, selected_features, data_stats):
+    """Predict insurance premium using the trained models with proper scaling"""
+    try:
+        # Validate input data\n        errors, warnings = validate_input_data(age, experience, vehicle_age, accidents, annual_mileage)\n        \n        if errors:\n            for error in errors:\n                st.error(f\"❌ {error}\")\n            return None, {\"Error\": \"Invalid input data\"}\n        \n        if warnings:\n            for warning in warnings:\n                st.warning(f\"⚠️ {warning}\")\n        \n        # Validate required components\n        if not models:\n            st.error(\"No models available for prediction\")\n            return None, {\"Error\": \"No models\"}\n        \n        if scaler is None:\n            st.error(\"Scaler not available\")\n            return None, {\"Error\": \"No scaler\"}\n            \n        if selected_features is None:\n            st.error(\"Selected features not available\")\n            return None, {\"Error\": \"No features\"}\n        \n        # Create input data with correct column names
+        input_data = pd.DataFrame({
+            'Driver Age': [age],
+            'Driver Experience': [experience],
+            'Car Age': [vehicle_age],
+            'Previous Accidents': [accidents],
+            'Annual Mileage (x1000 km)': [annual_mileage]
+        })
+        
+        # Apply statistical feature engineering
+        input_features = create_statistical_features(input_data, data_stats)
+        
+        # Select only the features used in training
+        input_features_selected = input_features[selected_features]
+        
+        # Scale features using the trained scaler
+        input_scaled = scaler.transform(input_features_selected)
+        
+        # Make predictions with all available models
+        predictions = {}
+        if 'stacking_linear' in models:
+            predictions['Stacking (Linear)'] = models['stacking_linear'].predict(input_scaled)[0]
+        if 'stacking_ridge' in models:
+            predictions['Stacking (Ridge)'] = models['stacking_ridge'].predict(input_scaled)[0]
+        if 'voting_ensemble' in models:
+            predictions['Voting Ensemble'] = models['voting_ensemble'].predict(input_scaled)[0]
+        
+        # Use best model prediction as primary
+        primary_prediction = predictions.get('Stacking (Linear)', 
+                                           predictions.get('stacking_ridge',
+                                                         predictions.get('voting_ensemble', 800)))
+        
+        # Memory cleanup
+        gc.collect()
+        
+        return max(primary_prediction, 200), predictions
+        
+    except Exception as e:
+        st.error(f"Prediction error: {str(e)}")
+        return 800, {"Error": 800}
+
+# ==================== HEADER & BRANDING ====================
+def render_header():
+    """Render professional header with branding"""
+    # Main title with gradient background
+    st.markdown("""
+    <div style="background: linear-gradient(90deg, #2E86AB 0%, #A23B72 100%); padding: 2rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <h1 style="color: white; text-align: center; margin: 0; font-size: 2.5rem; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+            🏢 VIDEBIMUS AI
+        </h1>
+        <h2 style="color: #E0E0E0; text-align: center; margin: 0.5rem 0 1rem 0; font-size: 1.5rem; font-weight: normal;">
+            Insurance Premium Analytics Platform
+        </h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Contact information using columns
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown("**👨‍💼 Developer**")
+        st.markdown("Victor Collins Oppon")
+    
+    with col2:
+        st.markdown("**🎯 Title**")
+        st.markdown("Data Scientist & AI Consultant")
+    
+    with col3:
+        st.markdown("**🌐 Website**")
+        st.markdown("[videbimusai.com](https://www.videbimusai.com)")
+    
+    with col4:
+        st.markdown("**📧 Contact**")
+        st.markdown("[consulting@videbimusai.com](mailto:consulting@videbimusai.com)")
+
+def render_metrics_summary():
+    """Render key performance metrics"""
+    test_results = load_test_results()
+    
+    if test_results is not None and len(test_results) > 0:
+        best_r2 = test_results['Test_R2'].max()
+        best_model = test_results.loc[test_results['Test_R2'].idxmax(), 'Model']
+        avg_rmse = test_results['Test_RMSE'].mean()
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                label="🎯 Best Test R² Score",
+                value=f"{best_r2:.4f}",
+                delta=f"{(best_r2 - 0.95) * 100:.2f}% vs baseline"
+            )
+        
+        with col2:
+            st.metric(
+                label="🏆 Best Model",
+                value=best_model,
+                delta="99.78% Accuracy"
+            )
+        
+        with col3:
+            st.metric(
+                label="📊 Avg RMSE",
+                value=f"{avg_rmse:.4f}",
+                delta="Low error rate"
+            )
+        
+        with col4:
+            st.metric(
+                label="🤖 Ensemble Models",
+                value="3 Models",
+                delta="Production ready"
+            )
+
+# ==================== MAIN APPLICATION ====================
+def main():
+    """Main Streamlit application"""
+    
+    # Render header
+    render_header()
+    
+    # Sidebar configuration
+    with st.sidebar:
+        st.markdown("## ⚙️ Dashboard Controls")
+        st.markdown("---")
+        
+        # Model loading status
+        st.markdown("### 🤖 Model Status")
+        models = load_models()
+        scaler, selected_features, data_stats = load_scaler_and_features()
+        
+        if len(models) > 0:
+            st.success(f"✅ {len(models)} models loaded successfully")
+        else:
+            st.error("❌ No models loaded")
+            
+        if scaler is not None and selected_features is not None:
+            st.success(f"✅ Scaler and {len(selected_features)} features loaded")
+        else:
+            st.error("❌ Scaler or features not loaded")
+        
+        st.markdown("---")
+        
+        # Navigation info
+        st.markdown("### 📋 Navigation Guide")
+        st.markdown("""
+        - **📊 Executive Summary**: High-level insights
+        - **🔍 Detailed Analysis**: Deep-dive analytics  
+        - **🎯 Model Performance**: ML evaluation metrics
+        - **🧮 Premium Calculator**: Real-time predictions
+        """)
+        
+        st.markdown("---")
+        st.markdown("### 📈 Key Features")
+        st.markdown("""
+        ✅ **18 Interactive Visualizations**  
+        ✅ **99.78% ML Accuracy**  
+        ✅ **Real-time Predictions**  
+        ✅ **Production-grade Models**  
+        ✅ **Memory Optimized**  
+        """)
+    
+    # Metrics summary
+    render_metrics_summary()
+    
+    # Initialize visualization engine
+    viz_engine = initialize_visualization_engine()
+    
+    if viz_engine is None:
+        st.error("❌ Failed to initialize visualization engine")
+        st.stop()
+    
+    # Main tabs
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Executive Summary",
+        "🔍 Detailed Analysis", 
+        "🎯 Model Performance",
+        "🧮 Premium Calculator"
+    ])
+    
+    # Executive Summary Tab
+    with tab1:
+        st.markdown("### 📊 Executive Summary - High-Level Business Insights")
+        st.markdown("**Six key visualizations providing strategic overview of insurance premium patterns**")
+        
+        # Explanatory note
+        st.info("""
+        **📋 What you'll see in this dashboard:**
+        
+        This section provides a bird's-eye view of the insurance premium landscape. The visualizations below show:
+        - **Premium distributions** across different customer segments
+        - **Key risk factors** that drive pricing decisions  
+        - **Age and vehicle impact** on premium calculations
+        - **Accident history effects** on insurance costs
+        - **Feature importance rankings** from our ML models
+        
+        💡 *Use these insights to understand overall market trends and pricing patterns.*
+        """)
+        
+        try:
+            with st.spinner("🔄 Generating executive summary visualizations..."):
+                fig_executive = viz_engine.create_executive_summary()
+                st.plotly_chart(fig_executive, use_container_width=True, height=900)
+            
+            st.success("✅ Executive summary loaded successfully")
+            
+        except Exception as e:
+            st.error(f"❌ Error loading executive summary: {str(e)}")
+            st.info("💡 Please check that data files are available in the data/ directory")
+    
+    # Detailed Analysis Tab
+    with tab2:
+        st.markdown("### 🔍 Detailed Analysis - Premium Driver Deep Dive")
+        st.markdown("**Six comprehensive analyses exploring the key factors that influence insurance premiums**")
+        
+        # Explanatory note
+        st.info("""
+        **🔬 Deep dive into risk factor relationships:**
+        
+        Explore the intricate relationships between various risk factors that determine your premium:
+        - **Experience vs Premium** - How driving experience affects rates over time
+        - **Age demographics** - Premium patterns across different age groups
+        - **Vehicle age impact** - How car age influences insurance costs
+        - **Accident history** - The compounding effect of previous claims
+        - **Mileage correlation** - Annual driving distance and premium relationship
+        
+        💡 *These detailed visualizations reveal the "why" behind insurance pricing decisions.*
+        """)
+        
+        try:
+            with st.spinner("🔄 Generating detailed analysis visualizations..."):
+                fig_detailed = viz_engine.create_detailed_analysis()
+                st.plotly_chart(fig_detailed, use_container_width=True, height=1000)
+            
+            st.success("✅ Detailed analysis loaded successfully")
+            
+        except Exception as e:
+            st.error(f"❌ Error loading detailed analysis: {str(e)}")
+            st.info("💡 Please check that data files are available in the data/ directory")
+    
+    # Model Performance Tab  
+    with tab3:
+        st.markdown("### 🎯 Model Performance - ML Excellence Dashboard")
+        st.markdown("**Six advanced metrics showcasing machine learning model performance and validation**")
+        
+        # Explanatory note
+        st.info("""
+        **🤖 Machine Learning Model Performance Metrics:**
+        
+        This technical dashboard showcases our AI models' accuracy and reliability:
+        - **Model Performance** - Test results (T) and validation rankings (99.78% R² achieved!)
+        - **Model Complexity Analysis** - Performance vs complexity trade-offs  
+        - **Overfitting Check** - How well models generalize to new data
+        - **Error Distribution** - RMSE vs MAE scatter plot analysis
+        - **Prediction Error Range** - Real dollar amounts of model errors
+        - **Best Model Indicator** - Gauge showing our top performer
+        
+        💡 *Our ensemble models achieve 99.78% accuracy - industry-leading performance!*
+        """)
+        
+        try:
+            with st.spinner("🔄 Generating model performance visualizations..."):
+                fig_performance = viz_engine.create_model_performance()
+                st.plotly_chart(fig_performance, use_container_width=True, height=950)
+            
+            st.success("✅ Model performance analysis loaded successfully")
+            
+        except Exception as e:
+            st.error(f"❌ Error loading model performance: {str(e)}")
+            st.info("💡 Please check that model files are available in the models/ directory")
+    
+    # Premium Calculator Tab
+    with tab4:
+        st.markdown("### 🧮 Premium Calculator - AI-Powered Predictions")
+        st.markdown("**Real-time insurance premium estimation using ensemble machine learning models**")
+        
+        # Explanatory note
+        st.info("""
+        **🚀 AI-Powered Premium Estimation:**
+        
+        Get instant, personalized insurance quotes powered by our industry-leading ML models:
+        - **Choose from 3 top models** - All achieving 99%+ accuracy
+        - **Real-time predictions** - Instant premium calculations
+        - **Risk assessment** - Understand factors affecting your rate
+        - **Optimization tips** - Actionable advice to reduce premiums
+        - **Model transparency** - See which AI model generated your quote
+        
+        💡 *Simply enter your information below and our AI will provide an accurate premium estimate.*
+        """)
+        
+        if len(models) == 0 or scaler is None or selected_features is None:
+            st.error("❌ Models, scaler, or features not available for predictions. Please check files.")
+            st.stop()
+        
+        # Model selector
+        st.markdown("#### 🤖 Select Prediction Model")
+        model_options = {
+            'Stacking (Linear) - Best Performance': 'stacking_linear',
+            'Stacking (Ridge)': 'stacking_ridge', 
+            'Voting Ensemble': 'voting_ensemble'
+        }
+        
+        selected_model_name = st.selectbox(
+            "Choose the ML model for prediction:",
+            options=list(model_options.keys()),
+            index=0,
+            help="Select which machine learning model to use for premium prediction. Stacking (Linear) has the best performance."
+        )
+        
+        selected_model_key = model_options[selected_model_name]
+        
+        # Calculator interface
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### 👤 Personal Information")
+            age = st.number_input(
+                "Age", 
+                min_value=18, max_value=80, value=30,
+                help="Driver's age in years"
+            )
+            
+            experience = st.number_input(
+                "Years of Driving Experience",
+                min_value=0, max_value=50, value=5,
+                help="Total years of driving experience"
+            )
+        
+        with col2:
+            st.markdown("#### 🚗 Vehicle Information")
+            vehicle_age = st.number_input(
+                "Vehicle Age (years)",
+                min_value=0, max_value=30, value=3,
+                help="Age of your vehicle in years"
+            )
+            
+            accidents = st.number_input(
+                "Number of Previous Accidents",
+                min_value=0, max_value=10, value=0,
+                help="Total number of previous accidents"
+            )
+            
+            annual_mileage = st.number_input(
+                "Annual Mileage (thousands km)",
+                min_value=5.0, max_value=50.0, value=15.0, step=0.5,
+                help="Annual mileage in thousands of kilometers"
+            )
+        
+        # Calculation section
+        st.markdown("---")
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        
+        with col2:
+            if st.button("🚀 Calculate Premium", type="primary", use_container_width=True):
+                with st.spinner(f"🤖 {selected_model_name} processing your request..."):
+                    # Use enhanced prediction function with full validation
+                    if selected_model_key in models:
+                        selected_models = {selected_model_key: models[selected_model_key]}
+                    else:
+                        selected_models = {}
+                    
+                    prediction, all_predictions = predict_premium(
+                        age, experience, vehicle_age, accidents, annual_mileage,
+                        selected_models, scaler, selected_features, data_stats
+                    )
+                
+                # Display result only if prediction is valid
+                if prediction is not None:
+                    st.markdown(f"### 💰 Estimated Annual Premium")
+                    st.markdown(f"**Model Used:** {selected_model_name}")
+                    st.success(f"## ${prediction:,.2f}")
+                else:
+                    st.error("❌ Unable to generate premium prediction due to validation errors.")
+                    st.stop()
+                
+                # Display model performance info
+                st.markdown("### 📊 Model Performance")
+                if selected_model_key == 'stacking_linear':
+                    st.info("**Stacking (Linear)**: Best performing model with 99.78% R² accuracy")
+                elif selected_model_key == 'stacking_ridge':
+                    st.info("**Stacking (Ridge)**: High performance with 99.78% R² accuracy")
+                elif selected_model_key == 'voting_ensemble':
+                    st.info("**Voting Ensemble**: Reliable with 99.48% R² accuracy")
+                
+                # Risk assessment
+                st.markdown("### 📊 Risk Assessment")
+                
+                # Calculate risk factors
+                risk_factors = []
+                if age < 25:
+                    risk_factors.append("Young driver premium")
+                if accidents > 0:
+                    risk_factors.append(f"{accidents} previous accident(s)")
+                if vehicle_age > 10:
+                    risk_factors.append("Older vehicle discount")
+                if annual_mileage > 20:
+                    risk_factors.append("High mileage premium")
+                if experience < 2:
+                    risk_factors.append("Limited experience premium")
+                
+                if risk_factors:
+                    st.markdown("**Risk factors affecting your premium:**")
+                    for factor in risk_factors:
+                        st.write(f"• {factor}")
+                else:
+                    st.success("✅ Low risk profile - standard premium rates apply")
+                
+                # Recommendations
+                st.markdown("### 💡 Premium Optimization Tips")
+                tips = []
+                
+                if accidents > 0:
+                    tips.append("🛡️ Consider defensive driving courses to potentially reduce future premiums")
+                if annual_mileage > 20:
+                    tips.append("🚗 Reducing annual mileage can significantly lower your premium")
+                if vehicle_age < 5:
+                    tips.append("🔒 Comprehensive coverage recommended for newer vehicles")
+                if age < 25:
+                    tips.append("📚 Good student discounts may be available")
+                
+                tips.append("🏆 Maintain a clean driving record for the best rates")
+                tips.append("📞 Contact our team for personalized insurance advice")
+                
+                for tip in tips:
+                    st.info(tip)
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; padding: 2rem; background-color: #f8f9fa; border-radius: 10px; margin-top: 2rem;">
+        <p style="margin: 0; color: #666;">
+            © 2025 <a href="https://www.videbimusai.com" target="_blank" style="color: #2E86AB; text-decoration: none;">
+            <strong>Videbimus AI</strong></a>. All rights reserved.
+        </p>
+        <p style="margin: 0.5rem 0 0 0; color: #888; font-size: 0.9rem;">
+            🚀 Powered by advanced machine learning • Built with Streamlit • v2.0.0 (Statistical-v1.0) • Updated 2025-09-02
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(copy \"archive\\dashboard_updated.py\" \"backup_dashboard_2025\\dashboard_updated_backup.py\")",
+      "Bash(copy:*)",
+      "Bash(xcopy:*)",
+      "Bash(taskkill:*)",
+      "Bash(tasklist:*)",
+      "Bash(powershell:*)",
+      "Bash(wmic:*)",
+      "Bash(dir)",
+      "Read(C:\\Users\\victo\\Documents\\Data_Science_Projects/**)",
+      "Read(C:\\Users\\victo\\Documents\\Data_Science_Projects\\bidec-erp-full/**)",
+      "Read(C:\\Users\\victo\\Documents\\Data_Science_Projects\\bidec-erp-full\\backend/**)",
+      "Read(C:\\Users\\victo\\Documents\\Data_Science_Projects\\bidec-erp-full/**)",
+      "Bash(start:*)",
+      "Bash(mkdir:*)",
+      "Bash(dir:*)",
+      "Bash(cmd /c:*)",
+      "Bash(git init:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(del test_colors.* /q)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "WebFetch(domain:render.com)",
+      "Bash(streamlit run:*)",
+      "Bash(sed:*)",
+      "Bash(git config:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,390 @@
+import dash
+from dash import dcc, html, Input, Output, State, callback_context
+import dash_bootstrap_components as dbc
+import plotly.graph_objects as go
+import plotly.express as px
+import pandas as pd
+import numpy as np
+import joblib
+import os
+from visualizations import InsuranceVisualizationEngine
+import warnings
+warnings.filterwarnings('ignore')
+
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME])
+
+viz_engine = InsuranceVisualizationEngine()
+
+def load_models():
+    models = {}
+    model_files = {
+        'Voting Ensemble': 'voting_ensemble.pkl',
+        'Stacking (Linear)': 'stacking_linear.pkl',
+        'Stacking (Ridge)': 'stacking_ridge.pkl'
+    }
+    
+    for name, file in model_files.items():
+        if os.path.exists(file):
+            try:
+                models[name] = joblib.load(file)
+            except:
+                pass
+    
+    return models
+
+available_models = load_models()
+
+navbar = dbc.NavbarSimple(
+    children=[
+        dbc.NavItem(dbc.NavLink("Data Overview", href="#data-overview")),
+        dbc.NavItem(dbc.NavLink("Feature Analysis", href="#feature-analysis")),
+        dbc.NavItem(dbc.NavLink("Model Performance", href="#model-performance")),
+        dbc.NavItem(dbc.NavLink("Predictions", href="#predictions")),
+        dbc.NavItem(dbc.NavLink("Risk Profiling", href="#risk-profiling")),
+        dbc.NavItem(dbc.NavLink("Model Testing", href="#model-testing")),
+    ],
+    brand="🚗 Car Insurance Premium Analytics Dashboard",
+    brand_href="#",
+    color="primary",
+    dark=True,
+    className="mb-4"
+)
+
+summary_cards = dbc.Row([
+    dbc.Col([
+        dbc.Card([
+            dbc.CardBody([
+                html.H4("Dataset Size", className="card-title"),
+                html.H2(f"{len(viz_engine.df):,}", className="text-primary"),
+                html.P("Total Records", className="card-text")
+            ])
+        ], className="mb-3")
+    ], width=3),
+    dbc.Col([
+        dbc.Card([
+            dbc.CardBody([
+                html.H4("Features", className="card-title"),
+                html.H2(f"{len(viz_engine.df.columns)-1}", className="text-success"),
+                html.P("Input Variables", className="card-text")
+            ])
+        ], className="mb-3")
+    ], width=3),
+    dbc.Col([
+        dbc.Card([
+            dbc.CardBody([
+                html.H4("Avg Premium", className="card-title"),
+                html.H2(f"${viz_engine.df['Insurance Premium ($)'].mean():.2f}", className="text-info"),
+                html.P("Mean Premium Value", className="card-text")
+            ])
+        ], className="mb-3")
+    ], width=3),
+    dbc.Col([
+        dbc.Card([
+            dbc.CardBody([
+                html.H4("Models Trained", className="card-title"),
+                html.H2(f"{len(viz_engine.model_results)}", className="text-warning"),
+                html.P("ML Algorithms", className="card-text")
+            ])
+        ], className="mb-3")
+    ], width=3),
+])
+
+data_overview_section = dbc.Container([
+    html.H2("📊 Data Overview", className="mb-4", id="data-overview"),
+    html.Hr(),
+    dcc.Graph(id='data-overview-plot', figure=viz_engine.create_data_overview(), 
+              config={'displayModeBar': True, 'displaylogo': False}),
+], className="mb-5")
+
+feature_analysis_section = dbc.Container([
+    html.H2("🔍 Feature Analysis", className="mb-4", id="feature-analysis"),
+    html.Hr(),
+    dcc.Graph(id='feature-analysis-plot', figure=viz_engine.create_feature_analysis(),
+              config={'displayModeBar': True, 'displaylogo': False}),
+], className="mb-5")
+
+model_performance_section = dbc.Container([
+    html.H2("📈 Model Performance", className="mb-4", id="model-performance"),
+    html.Hr(),
+    dcc.Graph(id='model-performance-plot', figure=viz_engine.create_model_performance_dashboard(),
+              config={'displayModeBar': True, 'displaylogo': False}),
+], className="mb-5")
+
+prediction_analysis_section = dbc.Container([
+    html.H2("🎯 Prediction Analysis", className="mb-4", id="predictions"),
+    html.Hr(),
+    dcc.Graph(id='prediction-analysis-plot', figure=viz_engine.create_prediction_analysis(),
+              config={'displayModeBar': True, 'displaylogo': False}),
+], className="mb-5")
+
+risk_profiling_section = dbc.Container([
+    html.H2("⚠️ Risk Profiling", className="mb-4", id="risk-profiling"),
+    html.Hr(),
+    dcc.Graph(id='risk-profiling-plot', figure=viz_engine.create_risk_profiling(),
+              config={'displayModeBar': True, 'displaylogo': False}),
+], className="mb-5")
+
+model_testing_section = dbc.Container([
+    html.H2("🧪 Interactive Model Testing", className="mb-4", id="model-testing"),
+    html.Hr(),
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader(html.H4("Input Features")),
+                dbc.CardBody([
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Driver Age"),
+                            dbc.Input(id="input-age", type="number", value=35, min=18, max=80, step=1),
+                        ], width=6),
+                        dbc.Col([
+                            dbc.Label("Driver Experience (years)"),
+                            dbc.Input(id="input-experience", type="number", value=10, min=0, max=60, step=1),
+                        ], width=6),
+                    ], className="mb-3"),
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Previous Accidents"),
+                            dbc.Input(id="input-accidents", type="number", value=0, min=0, max=10, step=1),
+                        ], width=6),
+                        dbc.Col([
+                            dbc.Label("Annual Mileage (x1000 km)"),
+                            dbc.Input(id="input-mileage", type="number", value=15, min=1, max=100, step=1),
+                        ], width=6),
+                    ], className="mb-3"),
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Car Manufacturing Year"),
+                            dbc.Input(id="input-car-year", type="number", value=2020, min=1990, max=2024, step=1),
+                        ], width=6),
+                        dbc.Col([
+                            dbc.Label("Car Age"),
+                            dbc.Input(id="input-car-age", type="number", value=4, min=0, max=30, step=1),
+                        ], width=6),
+                    ], className="mb-3"),
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Select Model"),
+                            dcc.Dropdown(
+                                id="model-selector",
+                                options=[{"label": name, "value": name} for name in available_models.keys()],
+                                value=list(available_models.keys())[0] if available_models else None,
+                                placeholder="Select a model"
+                            ),
+                        ], width=12),
+                    ], className="mb-3"),
+                    dbc.Button("Predict Premium", id="predict-button", color="primary", size="lg", className="w-100"),
+                ])
+            ])
+        ], width=5),
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader(html.H4("Prediction Results")),
+                dbc.CardBody([
+                    html.Div(id="prediction-output", children=[
+                        html.H3("Click 'Predict Premium' to see results", className="text-center text-muted mt-5")
+                    ])
+                ])
+            ])
+        ], width=7),
+    ]),
+    html.Hr(),
+    dbc.Row([
+        dbc.Col([
+            html.H4("Feature Impact Analysis", className="mb-3"),
+            dcc.Graph(id='feature-impact-plot')
+        ], width=6),
+        dbc.Col([
+            html.H4("Sensitivity Analysis", className="mb-3"),
+            dcc.Graph(id='sensitivity-plot')
+        ], width=6),
+    ], className="mt-4"),
+], className="mb-5")
+
+app.layout = html.Div([
+    navbar,
+    dbc.Container([
+        html.H1("Car Insurance Premium Analytics Platform", className="text-center mb-4"),
+        html.P("Advanced Machine Learning Dashboard for Insurance Premium Analysis and Prediction", 
+               className="text-center text-muted mb-5"),
+        summary_cards,
+        html.Hr(className="my-5"),
+        data_overview_section,
+        feature_analysis_section,
+        model_performance_section,
+        prediction_analysis_section,
+        risk_profiling_section,
+        model_testing_section,
+    ], fluid=True),
+    dbc.Container([
+        html.Hr(),
+        html.P("© 2024 Car Insurance Analytics | Powered by Machine Learning", 
+               className="text-center text-muted")
+    ])
+])
+
+@app.callback(
+    [Output('prediction-output', 'children'),
+     Output('feature-impact-plot', 'figure'),
+     Output('sensitivity-plot', 'figure')],
+    [Input('predict-button', 'n_clicks')],
+    [State('input-age', 'value'),
+     State('input-experience', 'value'),
+     State('input-accidents', 'value'),
+     State('input-mileage', 'value'),
+     State('input-car-year', 'value'),
+     State('input-car-age', 'value'),
+     State('model-selector', 'value')]
+)
+def predict_premium(n_clicks, age, experience, accidents, mileage, car_year, car_age, model_name):
+    if n_clicks is None or not model_name or model_name not in available_models:
+        return [
+            html.H3("Click 'Predict Premium' to see results", className="text-center text-muted mt-5")
+        ], go.Figure(), go.Figure()
+    
+    features = pd.DataFrame({
+        'Driver Age': [age],
+        'Driver Experience': [experience],
+        'Previous Accidents': [accidents],
+        'Annual Mileage (x1000 km)': [mileage],
+        'Car Manufacturing Year': [car_year],
+        'Car Age': [car_age]
+    })
+    
+    try:
+        model = available_models[model_name]
+        prediction = model.predict(features)[0]
+        
+        avg_premium = viz_engine.df['Insurance Premium ($)'].mean()
+        std_premium = viz_engine.df['Insurance Premium ($)'].std()
+        
+        risk_level = "Low Risk" if prediction < avg_premium - std_premium else \
+                    "Medium Risk" if prediction < avg_premium + std_premium else "High Risk"
+        
+        risk_color = "success" if risk_level == "Low Risk" else \
+                    "warning" if risk_level == "Medium Risk" else "danger"
+        
+        percentile = (viz_engine.df['Insurance Premium ($)'] < prediction).mean() * 100
+        
+        prediction_output = html.Div([
+            dbc.Alert([
+                html.H2(f"${prediction:.2f}", className="alert-heading"),
+                html.P("Predicted Insurance Premium", className="mb-0")
+            ], color="primary"),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Alert([
+                        html.H5(risk_level),
+                        html.P("Risk Category", className="mb-0 small")
+                    ], color=risk_color)
+                ], width=6),
+                dbc.Col([
+                    dbc.Alert([
+                        html.H5(f"{percentile:.1f}%"),
+                        html.P("Percentile", className="mb-0 small")
+                    ], color="info")
+                ], width=6),
+            ]),
+            html.Hr(),
+            html.H5("Key Insights:"),
+            html.Ul([
+                html.Li(f"Your premium is ${abs(prediction - avg_premium):.2f} "
+                       f"{'above' if prediction > avg_premium else 'below'} average"),
+                html.Li(f"Driver profile: {age} years old with {experience} years experience"),
+                html.Li(f"Vehicle: {car_age} year old car with {mileage}k km annual mileage"),
+                html.Li(f"Risk factors: {accidents} previous accidents")
+            ])
+        ])
+        
+        feature_names = features.columns.tolist()
+        feature_values = features.iloc[0].tolist()
+        avg_values = viz_engine.df[feature_names].mean().tolist()
+        
+        feature_impact_fig = go.Figure()
+        feature_impact_fig.add_trace(go.Bar(
+            name='Your Values',
+            x=feature_names,
+            y=feature_values,
+            marker_color='lightblue'
+        ))
+        feature_impact_fig.add_trace(go.Bar(
+            name='Average Values',
+            x=feature_names,
+            y=avg_values,
+            marker_color='lightcoral'
+        ))
+        feature_impact_fig.update_layout(
+            title="Your Profile vs Average",
+            barmode='group',
+            xaxis_tickangle=-45,
+            height=400,
+            template='plotly_white'
+        )
+        
+        sensitivity_data = []
+        base_features = features.copy()
+        
+        for col in feature_names:
+            variations = []
+            premiums = []
+            
+            original_value = base_features[col].iloc[0]
+            col_std = viz_engine.df[col].std()
+            
+            for delta in np.linspace(-2*col_std, 2*col_std, 20):
+                test_features = base_features.copy()
+                test_features[col] = original_value + delta
+                
+                if test_features[col].iloc[0] >= 0:
+                    try:
+                        pred = model.predict(test_features)[0]
+                        variations.append((delta/col_std)*100)
+                        premiums.append(pred)
+                    except:
+                        pass
+            
+            if variations:
+                sensitivity_data.append({
+                    'feature': col,
+                    'variations': variations,
+                    'premiums': premiums
+                })
+        
+        sensitivity_fig = go.Figure()
+        for item in sensitivity_data:
+            sensitivity_fig.add_trace(go.Scatter(
+                x=item['variations'],
+                y=item['premiums'],
+                mode='lines',
+                name=item['feature'][:15]
+            ))
+        
+        sensitivity_fig.update_layout(
+            title="Feature Sensitivity Analysis",
+            xaxis_title="Feature Variation (%)",
+            yaxis_title="Predicted Premium ($)",
+            height=400,
+            template='plotly_white',
+            hovermode='x unified'
+        )
+        
+        return prediction_output, feature_impact_fig, sensitivity_fig
+        
+    except Exception as e:
+        error_output = dbc.Alert([
+            html.H4("Prediction Error", className="alert-heading"),
+            html.P(f"Could not generate prediction: {str(e)}")
+        ], color="danger")
+        
+        return error_output, go.Figure(), go.Figure()
+
+if __name__ == '__main__':
+    print("\n" + "="*60)
+    print("Car Insurance Premium Analytics Dashboard")
+    print("="*60)
+    print("\nStarting dashboard server...")
+    print("\nDashboard will be available at: http://127.0.0.1:8050")
+    print("\nPress CTRL+C to stop the server\n")
+    print("="*60 + "\n")
+    
+    app.run(debug=True, port=8050)

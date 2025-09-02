@@ -1,0 +1,19 @@
+# Streamlit-Optimized Requirements
+# Videbimus AI - Insurance Premium Analytics Platform
+
+# Core Streamlit Framework
+streamlit>=1.28.0
+
+# Data Processing (Memory Optimized)
+pandas>=2.0.0,<2.3.0
+numpy>=1.24.0,<2.2.0
+
+# Visualization
+plotly>=5.15.0
+
+# Machine Learning
+scikit-learn>=1.3.0,<1.6.0
+joblib>=1.3.0,<1.5.0
+
+# Additional utilities
+python-dotenv>=1.0.0
