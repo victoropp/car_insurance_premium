@@ -1,5 +1,6 @@
 # 🏢 Insurance Premium Analytics Platform
-## Developed by Victor Collins Oppon - Videbimus AI
+## Developed by Victor Collins Oppon - Data Scientist and AI Consultant
+### Videbimus AI
 
 ### 🚀 Live Demo
 *Coming Soon - Will be deployed on Render*
@@ -24,7 +25,7 @@ Ultimate machine learning platform for car insurance premium prediction with **9
 - **Deployment**: Streamlit Cloud, Render, Heroku Ready
 
 ### 📧 Contact
-- **Developer**: Victor Collins Oppon
+- **Developer**: Victor Collins Oppon - Data Scientist and AI Consultant
 - **Company**: Videbimus AI
 - **Email**: consulting@videbimusai.com
 - **WhatsApp**: +233 277 390 051

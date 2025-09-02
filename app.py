@@ -2278,7 +2278,7 @@ def main():
     st.markdown("---")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown("**👨‍💻 Developer**: Victor Collins Oppon")
+        st.markdown("**👨‍💻 Developer**: Victor Collins Oppon  \n**Data Scientist and AI Consultant**")
     with col2:
         st.markdown("**🏢 Company**: Videbimus AI")
     with col3:
