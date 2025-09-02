@@ -1631,16 +1631,8 @@ def main():
                      delta=f"σ={data_stats['Annual Mileage (x1000 km)']['std']:.1f}")
         
         # Distribution Analysis
-        st.markdown("#### 📊 Feature Distributions")
-        
-        # Create distribution charts for each feature
-        dist_fig = make_subplots(
-            rows=2, cols=3,
-            subplot_titles=('Driver Age Distribution', 'Experience Distribution', 'Vehicle Age Distribution',
-                           'Accidents Distribution', 'Mileage Distribution', 'Risk Segments'),
-            specs=[[{'type': 'histogram'}, {'type': 'histogram'}, {'type': 'histogram'}],
-                   [{'type': 'bar'}, {'type': 'histogram'}, {'type': 'pie'}]]
-        )
+        st.markdown("#### 📊 Customer Profile Analysis")
+        st.info("💡 **Understanding Your Customer Base**: These visualizations show the distribution of your customers across different risk factors. Use these insights to identify market segments and pricing opportunities.")
         
         # Load actual training data for real distributions
         try:
@@ -1660,75 +1652,239 @@ def main():
             if actual_data is None:
                 raise FileNotFoundError("Data file not found in any expected location")
             
-            # Real Driver Age Distribution
-            dist_fig.add_trace(
-                go.Histogram(x=actual_data['Driver Age'], nbinsx=20, marker_color='#2E86AB', name='Age'),
-                row=1, col=1
-            )
+            # Create tabs for different analysis views
+            dist_tabs = st.tabs(["👥 Demographics", "🚗 Vehicle & Usage", "⚠️ Risk Analysis"])
             
-            # Real Experience Distribution
-            dist_fig.add_trace(
-                go.Histogram(x=actual_data['Driver Experience'], nbinsx=20, marker_color='#A23B72', name='Experience'),
-                row=1, col=2
-            )
+            with dist_tabs[0]:
+                st.markdown("##### Driver Demographics Overview")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Driver Age Distribution with insights
+                    age_fig = go.Figure()
+                    age_fig.add_trace(go.Histogram(
+                        x=actual_data['Driver Age'], 
+                        nbinsx=15,
+                        marker_color='#2E86AB',
+                        name='Count',
+                        hovertemplate='Age: %{x}<br>Count: %{y}<extra></extra>'
+                    ))
+                    
+                    # Add mean line
+                    mean_age = actual_data['Driver Age'].mean()
+                    age_fig.add_vline(x=mean_age, line_dash="dash", line_color="red", 
+                                     annotation_text=f"Average: {mean_age:.0f}")
+                    
+                    age_fig.update_layout(
+                        title="Driver Age Distribution",
+                        xaxis_title="Age (years)",
+                        yaxis_title="Number of Drivers",
+                        height=350,
+                        showlegend=False
+                    )
+                    st.plotly_chart(age_fig, use_container_width=True)
+                    
+                    # Age insights
+                    young_pct = (actual_data['Driver Age'] < 25).mean() * 100
+                    senior_pct = (actual_data['Driver Age'] > 65).mean() * 100
+                    st.success(f"📊 **Age Insights:**\n\n"
+                              f"• Young drivers (<25): {young_pct:.1f}%\n\n"
+                              f"• Senior drivers (>65): {senior_pct:.1f}%\n\n"
+                              f"• Peak age group: {actual_data['Driver Age'].mode().values[0]:.0f} years")
+                
+                with col2:
+                    # Experience Distribution with insights
+                    exp_fig = go.Figure()
+                    exp_fig.add_trace(go.Histogram(
+                        x=actual_data['Driver Experience'], 
+                        nbinsx=15,
+                        marker_color='#A23B72',
+                        name='Count',
+                        hovertemplate='Experience: %{x} years<br>Count: %{y}<extra></extra>'
+                    ))
+                    
+                    # Add mean line
+                    mean_exp = actual_data['Driver Experience'].mean()
+                    exp_fig.add_vline(x=mean_exp, line_dash="dash", line_color="red",
+                                     annotation_text=f"Average: {mean_exp:.0f}")
+                    
+                    exp_fig.update_layout(
+                        title="Driving Experience Distribution",
+                        xaxis_title="Years of Experience",
+                        yaxis_title="Number of Drivers",
+                        height=350,
+                        showlegend=False
+                    )
+                    st.plotly_chart(exp_fig, use_container_width=True)
+                    
+                    # Experience insights
+                    new_drivers = (actual_data['Driver Experience'] < 2).mean() * 100
+                    experienced = (actual_data['Driver Experience'] > 10).mean() * 100
+                    st.info(f"📊 **Experience Insights:**\n\n"
+                           f"• New drivers (<2 years): {new_drivers:.1f}%\n\n"
+                           f"• Experienced (>10 years): {experienced:.1f}%\n\n"
+                           f"• Most common experience: {actual_data['Driver Experience'].mode().values[0]:.0f} years")
             
-            # Real Vehicle Age Distribution
-            dist_fig.add_trace(
-                go.Histogram(x=actual_data['Car Age'], nbinsx=20, marker_color='#6A994E', name='Vehicle Age'),
-                row=1, col=3
-            )
+            with dist_tabs[1]:
+                st.markdown("##### Vehicle and Usage Patterns")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Vehicle Age Distribution
+                    veh_fig = go.Figure()
+                    veh_fig.add_trace(go.Histogram(
+                        x=actual_data['Car Age'],
+                        nbinsx=15,
+                        marker_color='#6A994E',
+                        name='Count',
+                        hovertemplate='Vehicle Age: %{x} years<br>Count: %{y}<extra></extra>'
+                    ))
+                    
+                    mean_veh = actual_data['Car Age'].mean()
+                    veh_fig.add_vline(x=mean_veh, line_dash="dash", line_color="red",
+                                     annotation_text=f"Average: {mean_veh:.0f}")
+                    
+                    veh_fig.update_layout(
+                        title="Vehicle Age Distribution",
+                        xaxis_title="Vehicle Age (years)",
+                        yaxis_title="Number of Vehicles",
+                        height=350,
+                        showlegend=False
+                    )
+                    st.plotly_chart(veh_fig, use_container_width=True)
+                    
+                    # Vehicle insights
+                    new_cars = (actual_data['Car Age'] < 3).mean() * 100
+                    old_cars = (actual_data['Car Age'] > 10).mean() * 100
+                    st.success(f"🚗 **Vehicle Insights:**\n\n"
+                              f"• New vehicles (<3 years): {new_cars:.1f}%\n\n"
+                              f"• Older vehicles (>10 years): {old_cars:.1f}%\n\n"
+                              f"• Average vehicle age: {mean_veh:.1f} years")
+                
+                with col2:
+                    # Mileage Distribution
+                    mile_fig = go.Figure()
+                    mile_fig.add_trace(go.Histogram(
+                        x=actual_data['Annual Mileage (x1000 km)'],
+                        nbinsx=15,
+                        marker_color='#F18F01',
+                        name='Count',
+                        hovertemplate='Mileage: %{x}k km/year<br>Count: %{y}<extra></extra>'
+                    ))
+                    
+                    mean_mile = actual_data['Annual Mileage (x1000 km)'].mean()
+                    mile_fig.add_vline(x=mean_mile, line_dash="dash", line_color="red",
+                                      annotation_text=f"Average: {mean_mile:.0f}k")
+                    
+                    mile_fig.update_layout(
+                        title="Annual Mileage Distribution",
+                        xaxis_title="Annual Mileage (×1000 km)",
+                        yaxis_title="Number of Drivers",
+                        height=350,
+                        showlegend=False
+                    )
+                    st.plotly_chart(mile_fig, use_container_width=True)
+                    
+                    # Mileage insights
+                    low_mile = (actual_data['Annual Mileage (x1000 km)'] < 10).mean() * 100
+                    high_mile = (actual_data['Annual Mileage (x1000 km)'] > 20).mean() * 100
+                    st.warning(f"📏 **Mileage Insights:**\n\n"
+                              f"• Low mileage (<10k km): {low_mile:.1f}%\n\n"
+                              f"• High mileage (>20k km): {high_mile:.1f}%\n\n"
+                              f"• Average annual: {mean_mile:.1f}k km")
             
-            # Real Accidents Distribution
-            acc_counts = actual_data['Previous Accidents'].value_counts().sort_index()
-            acc_labels = [str(i) if i <= 4 else '5+' for i in acc_counts.index]
-            acc_values = acc_counts.values
-            
-            # Combine 5+ accidents into one category
-            if len(acc_counts) > 5:
-                acc_labels = acc_labels[:5] + ['5+']
-                acc_values = list(acc_values[:5]) + [sum(acc_values[5:])]
-            
-            dist_fig.add_trace(
-                go.Bar(x=acc_labels, y=acc_values, marker_color='#C73E1D', name='Accidents'),
-                row=2, col=1
-            )
-            
-            # Real Mileage Distribution
-            dist_fig.add_trace(
-                go.Histogram(x=actual_data['Annual Mileage (x1000 km)'], nbinsx=20, marker_color='#F18F01', name='Mileage'),
-                row=2, col=2
-            )
-            
-            # Real Risk Segments based on actual data
-            # Define risk categories based on actual data characteristics
-            low_risk_mask = (
-                (actual_data['Driver Age'] >= data_stats['Driver Age']['q1']) &
-                (actual_data['Driver Age'] <= data_stats['Driver Age']['q3']) &
-                (actual_data['Driver Experience'] >= data_stats['Driver Experience']['q1']) &
-                (actual_data['Previous Accidents'] == 0)
-            )
-            
-            high_risk_mask = (
-                (actual_data['Driver Age'] < data_stats['Driver Age']['q1']) |
-                (actual_data['Driver Age'] > data_stats['Driver Age']['q3']) |
-                (actual_data['Driver Experience'] < data_stats['Driver Experience']['q1']) |
-                (actual_data['Previous Accidents'] >= 4)
-            )
-            
-            med_risk_mask = ~(low_risk_mask | high_risk_mask)
-            
-            low_risk_pct = low_risk_mask.sum() / len(actual_data) * 100
-            med_risk_pct = med_risk_mask.sum() / len(actual_data) * 100
-            high_risk_pct = high_risk_mask.sum() / len(actual_data) * 100
-            
-            dist_fig.add_trace(
-                go.Pie(
-                    labels=['Low Risk', 'Medium Risk', 'High Risk'],
-                    values=[low_risk_pct, med_risk_pct, high_risk_pct],
-                    marker_colors=['#6A994E', '#F18F01', '#C73E1D']
-                ),
-                row=2, col=3
-            )
+            with dist_tabs[2]:
+                st.markdown("##### Risk Profile Analysis")
+                
+                col1, col2, col3 = st.columns([2, 1, 2])
+                
+                with col1:
+                    # Accident History Bar Chart
+                    acc_counts = actual_data['Previous Accidents'].value_counts().sort_index()
+                    
+                    acc_fig = go.Figure()
+                    acc_fig.add_trace(go.Bar(
+                        x=[str(i) if i < 5 else '5+' for i in acc_counts.index],
+                        y=acc_counts.values,
+                        marker_color=['#6A994E' if i == 0 else '#F18F01' if i < 3 else '#C73E1D' 
+                                     for i in acc_counts.index],
+                        text=acc_counts.values,
+                        textposition='outside',
+                        hovertemplate='%{x} accidents: %{y} drivers<extra></extra>'
+                    ))
+                    
+                    acc_fig.update_layout(
+                        title="Accident History Distribution",
+                        xaxis_title="Number of Previous Accidents",
+                        yaxis_title="Number of Drivers",
+                        height=350,
+                        showlegend=False
+                    )
+                    st.plotly_chart(acc_fig, use_container_width=True)
+                
+                with col2:
+                    # Accident statistics
+                    no_acc = (actual_data['Previous Accidents'] == 0).mean() * 100
+                    multi_acc = (actual_data['Previous Accidents'] >= 2).mean() * 100
+                    
+                    st.metric("Clean Record", f"{no_acc:.1f}%", "No accidents")
+                    st.metric("Multiple Accidents", f"{multi_acc:.1f}%", "≥2 accidents")
+                    st.metric("Avg Accidents", f"{actual_data['Previous Accidents'].mean():.2f}", 
+                             f"Max: {actual_data['Previous Accidents'].max():.0f}")
+                
+                with col3:
+                    # Risk Segments Pie Chart
+                    low_risk_mask = (
+                        (actual_data['Driver Age'] >= 25) & 
+                        (actual_data['Driver Age'] <= 65) &
+                        (actual_data['Driver Experience'] >= 5) &
+                        (actual_data['Previous Accidents'] == 0)
+                    )
+                    
+                    high_risk_mask = (
+                        (actual_data['Driver Age'] < 25) |
+                        (actual_data['Driver Experience'] < 2) |
+                        (actual_data['Previous Accidents'] >= 3)
+                    )
+                    
+                    med_risk_mask = ~(low_risk_mask | high_risk_mask)
+                    
+                    risk_fig = go.Figure()
+                    risk_fig.add_trace(go.Pie(
+                        labels=['Low Risk', 'Medium Risk', 'High Risk'],
+                        values=[
+                            low_risk_mask.sum(),
+                            med_risk_mask.sum(),
+                            high_risk_mask.sum()
+                        ],
+                        marker_colors=['#6A994E', '#F18F01', '#C73E1D'],
+                        hole=0.4,
+                        textinfo='label+percent',
+                        hovertemplate='%{label}: %{value} drivers<br>%{percent}<extra></extra>'
+                    ))
+                    
+                    risk_fig.update_layout(
+                        title="Customer Risk Segments",
+                        height=350,
+                        showlegend=True,
+                        annotations=[dict(text='Risk<br>Profile', x=0.5, y=0.5, font_size=16, showarrow=False)]
+                    )
+                    st.plotly_chart(risk_fig, use_container_width=True)
+                
+                # Risk Summary
+                st.markdown("##### 🎯 Risk Segmentation Criteria")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.success("**✅ Low Risk:**\n\n• Age: 25-65 years\n• Experience: ≥5 years\n• No accidents")
+                
+                with col2:
+                    st.warning("**⚠️ Medium Risk:**\n\n• Moderate age/experience\n• 1-2 accidents\n• Average mileage")
+                
+                with col3:
+                    st.error("**🚨 High Risk:**\n\n• Age: <25 years\n• Experience: <2 years\n• ≥3 accidents")
             
             # Store actual accident distribution for insights
             acc_dist = {str(k): v for k, v in acc_counts.items()}
@@ -1736,21 +1892,6 @@ def main():
         except FileNotFoundError:
             st.error("Training data file not found. Please ensure data/insurance_training_dataset.csv exists.")
             return
-        
-        # Update layout
-        dist_fig.update_layout(
-            showlegend=False,
-            height=600,
-            title="Statistical Distribution Analysis"
-        )
-        
-        dist_fig.update_xaxes(title_text="Age (years)", row=1, col=1)
-        dist_fig.update_xaxes(title_text="Experience (years)", row=1, col=2)
-        dist_fig.update_xaxes(title_text="Vehicle Age (years)", row=1, col=3)
-        dist_fig.update_xaxes(title_text="Number of Accidents", row=2, col=1)
-        dist_fig.update_xaxes(title_text="Annual Mileage (×1000 km)", row=2, col=2)
-        
-        st.plotly_chart(dist_fig, use_container_width=True)
         
         # Correlation Analysis
         st.markdown("#### 🔗 Feature Correlations & Insights")
