@@ -30,8 +30,8 @@ build/
 *.csv
 !requirements.txt
 
-# Model files
-*.pkl
+# Model files (allow essential .pkl files for deployment)
+# *.pkl (commented out to allow model files)
 *.joblib
 *.h5
 *.pt

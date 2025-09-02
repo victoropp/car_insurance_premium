@@ -387,10 +387,25 @@ def load_enhanced_data_assets():
     """Load all data assets with caching"""
     assets = {}
     
-    # Core assets
-    assets['scaler'] = joblib.load('models/robust_scaler.pkl')
-    assets['selected_features'] = joblib.load('models/selected_features.pkl')
-    assets['data_stats'] = joblib.load('models/data_statistics.pkl')
+    # Core assets with error handling
+    try:
+        assets['scaler'] = joblib.load('models/robust_scaler.pkl')
+        assets['selected_features'] = joblib.load('models/selected_features.pkl')
+        assets['data_stats'] = joblib.load('models/data_statistics.pkl')
+    except FileNotFoundError as e:
+        st.error(f"Model files not found: {e}")
+        st.info("🚧 This app requires trained model files to function properly.")
+        st.info("📝 Please ensure the following files exist:")
+        st.code("""
+        models/
+        ├── robust_scaler.pkl
+        ├── selected_features.pkl
+        ├── data_statistics.pkl
+        ├── stacking_linear.pkl
+        ├── stacking_ridge.pkl
+        └── voting_ensemble.pkl
+        """)
+        st.stop()
     
     # Performance data
     if os.path.exists('data/statistical_feature_importance.csv'):
