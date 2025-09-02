@@ -1664,10 +1664,10 @@ def main():
                     # Driver Age Distribution with insights
                     age_fig = go.Figure()
                     
-                    # Create custom bins for age groups
-                    age_bins = [18, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80]
+                    # Create evenly spaced bins for age groups
+                    age_bins = np.arange(18, 71, 5)  # 18-23, 23-28, 28-33, etc.
                     age_hist, age_edges = np.histogram(actual_data['Driver Age'], bins=age_bins)
-                    age_labels = [f"{age_bins[i]}-{age_bins[i+1]}" for i in range(len(age_bins)-1)]
+                    age_labels = [f"{int(age_bins[i])}-{int(age_bins[i+1])}" for i in range(len(age_bins)-1)]
                     
                     age_fig.add_trace(go.Bar(
                         x=age_labels,
@@ -1680,10 +1680,21 @@ def main():
                         hovertemplate='Age Range: %{x}<br>Count: %{y}<extra></extra>'
                     ))
                     
-                    # Add mean line
+                    # Add average indicator as annotation instead of line
                     mean_age = actual_data['Driver Age'].mean()
-                    age_fig.add_vline(x=mean_age, line_dash="dash", line_color="red", 
-                                     annotation_text=f"Average: {mean_age:.0f}")
+                    # Find which bin contains the mean
+                    mean_bin_idx = np.digitize(mean_age, age_bins) - 1
+                    if 0 <= mean_bin_idx < len(age_labels):
+                        age_fig.add_annotation(
+                            x=age_labels[mean_bin_idx],
+                            y=age_hist[mean_bin_idx],
+                            text=f"← Mean: {mean_age:.0f}",
+                            showarrow=True,
+                            arrowhead=2,
+                            arrowcolor="red",
+                            ax=40,
+                            ay=-20
+                        )
                     
                     age_fig.update_layout(
                         title="Driver Age Distribution",
@@ -1691,7 +1702,7 @@ def main():
                         yaxis_title="Number of Drivers",
                         height=350,
                         showlegend=False,
-                        bargap=0.2,
+                        bargap=0.1,
                         xaxis=dict(tickangle=-45)
                     )
                     st.plotly_chart(age_fig, use_container_width=True)
@@ -1708,10 +1719,10 @@ def main():
                     # Experience Distribution with insights
                     exp_fig = go.Figure()
                     
-                    # Create custom bins for experience groups
-                    exp_bins = [0, 2, 5, 10, 15, 20, 25, 30, 35, 40]
+                    # Create evenly spaced bins for experience groups
+                    exp_bins = np.arange(0, 45, 5)  # 0-5, 5-10, 10-15, etc.
                     exp_hist, exp_edges = np.histogram(actual_data['Driver Experience'], bins=exp_bins)
-                    exp_labels = [f"{exp_bins[i]}-{exp_bins[i+1]}" for i in range(len(exp_bins)-1)]
+                    exp_labels = [f"{int(exp_bins[i])}-{int(exp_bins[i+1])}" for i in range(len(exp_bins)-1)]
                     
                     exp_fig.add_trace(go.Bar(
                         x=exp_labels,
@@ -1724,10 +1735,20 @@ def main():
                         hovertemplate='Experience Range: %{x} years<br>Count: %{y}<extra></extra>'
                     ))
                     
-                    # Add mean line
+                    # Add average indicator as annotation
                     mean_exp = actual_data['Driver Experience'].mean()
-                    exp_fig.add_vline(x=mean_exp, line_dash="dash", line_color="red",
-                                     annotation_text=f"Average: {mean_exp:.0f}")
+                    mean_bin_idx = np.digitize(mean_exp, exp_bins) - 1
+                    if 0 <= mean_bin_idx < len(exp_labels):
+                        exp_fig.add_annotation(
+                            x=exp_labels[mean_bin_idx],
+                            y=exp_hist[mean_bin_idx],
+                            text=f"← Mean: {mean_exp:.0f}",
+                            showarrow=True,
+                            arrowhead=2,
+                            arrowcolor="red",
+                            ax=40,
+                            ay=-20
+                        )
                     
                     exp_fig.update_layout(
                         title="Driving Experience Distribution",
@@ -1735,7 +1756,7 @@ def main():
                         yaxis_title="Number of Drivers",
                         height=350,
                         showlegend=False,
-                        bargap=0.2,
+                        bargap=0.1,
                         xaxis=dict(tickangle=-45)
                     )
                     st.plotly_chart(exp_fig, use_container_width=True)
@@ -1757,10 +1778,10 @@ def main():
                     # Vehicle Age Distribution
                     veh_fig = go.Figure()
                     
-                    # Create custom bins for vehicle age groups
-                    veh_bins = [0, 2, 4, 6, 8, 10, 12, 15, 20, 25]
+                    # Create evenly spaced bins for vehicle age groups
+                    veh_bins = np.arange(0, 40, 5)  # 0-5, 5-10, 10-15, etc.
                     veh_hist, veh_edges = np.histogram(actual_data['Car Age'], bins=veh_bins)
-                    veh_labels = [f"{veh_bins[i]}-{veh_bins[i+1]}" for i in range(len(veh_bins)-1)]
+                    veh_labels = [f"{int(veh_bins[i])}-{int(veh_bins[i+1])}" for i in range(len(veh_bins)-1)]
                     
                     veh_fig.add_trace(go.Bar(
                         x=veh_labels,
@@ -1774,8 +1795,18 @@ def main():
                     ))
                     
                     mean_veh = actual_data['Car Age'].mean()
-                    veh_fig.add_vline(x=mean_veh, line_dash="dash", line_color="red",
-                                     annotation_text=f"Average: {mean_veh:.0f}")
+                    mean_bin_idx = np.digitize(mean_veh, veh_bins) - 1
+                    if 0 <= mean_bin_idx < len(veh_labels):
+                        veh_fig.add_annotation(
+                            x=veh_labels[mean_bin_idx],
+                            y=veh_hist[mean_bin_idx],
+                            text=f"← Mean: {mean_veh:.0f}",
+                            showarrow=True,
+                            arrowhead=2,
+                            arrowcolor="red",
+                            ax=40,
+                            ay=-20
+                        )
                     
                     veh_fig.update_layout(
                         title="Vehicle Age Distribution",
@@ -1783,7 +1814,7 @@ def main():
                         yaxis_title="Number of Vehicles",
                         height=350,
                         showlegend=False,
-                        bargap=0.2,
+                        bargap=0.1,
                         xaxis=dict(tickangle=-45)
                     )
                     st.plotly_chart(veh_fig, use_container_width=True)
@@ -1800,10 +1831,10 @@ def main():
                     # Mileage Distribution
                     mile_fig = go.Figure()
                     
-                    # Create custom bins for mileage groups
-                    mile_bins = [0, 5, 10, 15, 20, 25, 30, 35, 40]
+                    # Create evenly spaced bins for mileage groups (centered around data range)
+                    mile_bins = np.arange(10, 30, 2.5)  # 10-12.5, 12.5-15, 15-17.5, etc.
                     mile_hist, mile_edges = np.histogram(actual_data['Annual Mileage (x1000 km)'], bins=mile_bins)
-                    mile_labels = [f"{mile_bins[i]}-{mile_bins[i+1]}k" for i in range(len(mile_bins)-1)]
+                    mile_labels = [f"{mile_bins[i]:.1f}-{mile_bins[i+1]:.1f}k" for i in range(len(mile_bins)-1)]
                     
                     mile_fig.add_trace(go.Bar(
                         x=mile_labels,
@@ -1817,8 +1848,18 @@ def main():
                     ))
                     
                     mean_mile = actual_data['Annual Mileage (x1000 km)'].mean()
-                    mile_fig.add_vline(x=mean_mile, line_dash="dash", line_color="red",
-                                      annotation_text=f"Average: {mean_mile:.0f}k")
+                    mean_bin_idx = np.digitize(mean_mile, mile_bins) - 1
+                    if 0 <= mean_bin_idx < len(mile_labels):
+                        mile_fig.add_annotation(
+                            x=mile_labels[mean_bin_idx],
+                            y=mile_hist[mean_bin_idx],
+                            text=f"← Mean: {mean_mile:.0f}k",
+                            showarrow=True,
+                            arrowhead=2,
+                            arrowcolor="red",
+                            ax=40,
+                            ay=-20
+                        )
                     
                     mile_fig.update_layout(
                         title="Annual Mileage Distribution",
@@ -1826,7 +1867,7 @@ def main():
                         yaxis_title="Number of Drivers",
                         height=350,
                         showlegend=False,
-                        bargap=0.2,
+                        bargap=0.1,
                         xaxis=dict(tickangle=-45)
                     )
                     st.plotly_chart(mile_fig, use_container_width=True)
@@ -1866,7 +1907,7 @@ def main():
                         yaxis_title="Number of Drivers",
                         height=350,
                         showlegend=False,
-                        bargap=0.3
+                        bargap=0.15
                     )
                     st.plotly_chart(acc_fig, use_container_width=True)
                 
